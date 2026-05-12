@@ -1,3 +1,5 @@
+# Copy to app-config-local.yaml (gitignored). Export GITHUB_TOKEN for GitHub integration.
+# GitHub OAuth values live in app-config.yaml as AUTH_GITHUB_CLIENT_ID / AUTH_GITHUB_CLIENT_SECRET.
 app:
   title: Foundry IDP
   baseUrl: http://localhost:3000
@@ -43,8 +45,13 @@ backend:
   # This is for local development only, it is not recommended to use this in production
   # The production database configuration is stored in app-config.production.yaml
   database:
-    client: better-sqlite3
-    connection: ':memory:'
+    # client: better-sqlite3
+    connection: 
+      host: localhost
+      port: 5432
+      user: postgres
+      password: postgres
+      database: foundry_idp
   # see https://backstage.io/docs/ai/mcp-actions#actions-configuration for more details
   actions:
     pluginSources:
@@ -84,24 +91,10 @@ techdocs:
     type: 'local' # Alternatives - 'googleGcs' or 'awsS3'. Read documentation for using alternatives.
 
 auth:
-  environment: development
   # see https://backstage.io/docs/auth/ to learn about auth providers
   providers:
     # See https://backstage.io/docs/auth/guest/provider
     guest: {}
-    github:
-      development:
-          clientId: ${AUTH_GITHUB_CLIENT_ID}
-          clientSecret: ${AUTH_GITHUB_CLIENT_SECRET}
-          # scopes: [user:email]
-          # authorizationURL: https://github.com/login/oauth/authorize
-          # tokenURL: https://github.com/login/oauth/access_token
-          # userInfoURL: https://api.github.com/user
-          signIn:
-            resolvers:
-              - resolver: usernameMatchingUserEntityName 
-
-
   # see https://backstage.io/docs/ai/mcp-actions#client-id-metadata-documents
   # to learn more about client id metadata documents
   experimentalClientIdMetadataDocuments:

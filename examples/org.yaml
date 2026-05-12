@@ -7,6 +7,16 @@ metadata:
 spec:
   memberOf: [guests]
 ---
+# metadata.name must match your GitHub login for auth.providers.github.signIn.resolvers usernameMatchingUserEntityName
+apiVersion: backstage.io/v1alpha1
+kind: User
+metadata:
+  name: sajjadkhan12
+spec:
+  profile:
+    displayName: sajjadkhan12
+  memberOf: [guests]
+---
 # https://backstage.io/docs/features/software-catalog/descriptor-format#kind-group
 apiVersion: backstage.io/v1alpha1
 kind: Group
