@@ -1,0 +1,20 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ${{ values.service_name }}
+  description: ${{ values.description }}
+  annotations:
+    github.com/project-slug: ${{ values.repo_slug }}
+    backstage.io/source-location: url:https://github.com/${{ values.repo_slug }}/tree/${{ values.git_branch }}/
+    argocd/app-name: ${{ values.service_name }}-${{ values.environment }}
+    backstage.io/kubernetes-id: ${{ values.service_name }}
+    backstage.io/kubernetes-namespace: apps
+    backstage.io/techdocs-ref: dir:.
+  tags:
+    - python
+    - fastapi
+    - gitops
+spec:
+  type: service
+  lifecycle: ${{ values.environment }}
+  owner: ${{ values.owner }}

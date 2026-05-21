@@ -54,3 +54,8 @@ e2e-test-report/
 
 # Cache
 .cache/
+
+app-config-local.yaml
+
+*.sqlite
+GEMINI.md
