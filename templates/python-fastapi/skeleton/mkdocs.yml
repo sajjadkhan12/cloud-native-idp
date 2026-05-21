@@ -1,0 +1,11 @@
+site_name: ${{ values.service_name }}
+site_description: Documentation for ${{ values.service_name }}
+
+nav:
+  - Home: index.md
+
+theme:
+  name: material
+
+plugins:
+  - techdocs-core

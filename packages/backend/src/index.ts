@@ -7,6 +7,7 @@
  */
 
 import { createBackend } from '@backstage/backend-defaults';
+import { deprovisionPlugin } from './plugins/deprovision';
 
 const backend = createBackend();
 
@@ -66,5 +67,8 @@ backend.add(import('@backstage/plugin-signals-backend'));
 
 // mcp actions plugin
 backend.add(import('@backstage/plugin-mcp-actions-backend'));
+
+// deprovision plugin
+backend.add(deprovisionPlugin);
 
 backend.start();

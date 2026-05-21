@@ -5,7 +5,7 @@ kind: User
 metadata:
   name: guest
 spec:
-  memberOf: [guests]
+  memberOf: [guests, platform]
 ---
 # metadata.name must match your GitHub login for auth.providers.github.signIn.resolvers usernameMatchingUserEntityName
 apiVersion: backstage.io/v1alpha1
@@ -15,13 +15,22 @@ metadata:
 spec:
   profile:
     displayName: sajjadkhan12
-  memberOf: [guests]
+  memberOf: [guests, platform]
 ---
 # https://backstage.io/docs/features/software-catalog/descriptor-format#kind-group
 apiVersion: backstage.io/v1alpha1
 kind: Group
 metadata:
   name: guests
+spec:
+  type: team
+  children: []
+---
+# https://backstage.io/docs/features/software-catalog/descriptor-format#kind-group
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: platform
 spec:
   type: team
   children: []

@@ -1,6 +1,11 @@
 import { createApp } from '@backstage/frontend-defaults';
 import catalogPlugin from '@backstage/plugin-catalog/alpha';
+import githubActionsPlugin from '@backstage-community/plugin-github-actions/alpha';
+import techdocsPlugin from '@backstage/plugin-techdocs/alpha';
+import apiDocsPlugin from '@backstage/plugin-api-docs/alpha';
+import catalogGraphPlugin from '@backstage/plugin-catalog-graph/alpha';
 import { navModule } from './modules/nav';
+import { deprovisionModule } from './modules/deprovision';
 
 import { githubAuthApiRef } from '@backstage/core-plugin-api';
 import { SignInPageBlueprint } from '@backstage/plugin-app-react';
@@ -28,11 +33,17 @@ const signInPage = SignInPageBlueprint.make({
 });
 
 export default createApp({
-  features: [catalogPlugin,
+  features: [
+    catalogPlugin,
+    githubActionsPlugin,
+    techdocsPlugin,
+    apiDocsPlugin,
+    catalogGraphPlugin,
     navModule,
-  createFrontendModule({
-    pluginId: 'app',
-    extensions: [signInPage],
-  })
-],
+    deprovisionModule,
+    createFrontendModule({
+      pluginId: 'app',
+      extensions: [signInPage],
+    })
+  ],
 });
