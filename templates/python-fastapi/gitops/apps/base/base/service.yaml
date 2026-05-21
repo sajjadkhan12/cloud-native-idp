@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${{ values.service_name }}
+  labels:
+    app: ${{ values.service_name }}
+    backstage.io/kubernetes-id: ${{ values.service_name }}
+spec:
+  type: ClusterIP
+  selector:
+    app: ${{ values.service_name }}
+  ports:
+    - name: http
+      port: 80
+      targetPort: ${{ values.service_port }}
+      protocol: TCP

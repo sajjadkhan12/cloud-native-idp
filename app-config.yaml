@@ -11,11 +11,10 @@ app:
     - nav-item:user-settings: false
     - nav-item:catalog: false
     - nav-item:scaffolder: false
-
-    # Configure the catalog index page to be the root page, this is normally mounted on /catalog
-    - page:catalog:
-        config:
-          path: /
+    - nav-item:kubernetes: false
+    - page:kubernetes: false
+    - entity-card:catalog-graph/relations: true
+    - entity-context-menu-item:catalog/deprovision-context-menu-item: true
 
 organization:
   name: Foundry IDP
@@ -44,7 +43,8 @@ backend:
   # The production database configuration is stored in app-config.production.yaml
   database:
     client: better-sqlite3
-    connection: ':memory:'
+    connection:
+      database: 'backstage.sqlite'
   # see https://backstage.io/docs/ai/mcp-actions#actions-configuration for more details
   actions:
     pluginSources:
@@ -91,8 +91,8 @@ auth:
     guest: {}
     github:
       development:
-          clientId: ${AUTH_GITHUB_CLIENT_ID}
-          clientSecret: ${AUTH_GITHUB_CLIENT_SECRET}
+          clientId: ${GITHUB_CLIENT_ID}
+          clientSecret: ${GITHUB_CLIENT_SECRET}
           # scopes: [user:email]
           # authorizationURL: https://github.com/login/oauth/authorize
           # tokenURL: https://github.com/login/oauth/access_token
@@ -123,23 +123,25 @@ catalog:
     entityFilename: catalog-info.yaml
     pullRequestBranchName: backstage-integration
   rules:
-    - allow: [Component, System, API, Resource, Location]
+    - allow: [Component, System, API, Resource, Location, Template]
   locations:
     # Local example data, file locations are relative to the backend process, typically `packages/backend`
     - type: file
       target: ../../examples/entities.yaml
+    - type: file
+      target: ../../examples/org.yaml
+      rules:
+        - allow: [User, Group]
+    - type: file
+      target: ../../templates/python-fastapi/template.yaml
+      rules:
+        - allow: [Template]
 
     # Local example template
     - type: file
       target: ../../examples/template/template.yaml
       rules:
         - allow: [Template]
-
-    # Local example organizational data
-    - type: file
-      target: ../../examples/org.yaml
-      rules:
-        - allow: [User, Group]
 
     ## Uncomment these lines to add more example data
     # - type: url
@@ -153,6 +155,20 @@ catalog:
 
 kubernetes:
   # see https://backstage.io/docs/features/kubernetes/configuration for kubernetes configuration options
+  serviceLocatorMethod:
+    type: multiTenant
+  clusterLocatorMethods:
+    # Local development: run `kubectl proxy --port=8001` against Docker Desktop
+    # before opening the Kubernetes tab in Backstage.
+    - type: localKubectlProxy
+  objectTypes:
+    - pods
+    - services
+    - configmaps
+    - deployments
+    - replicasets
+    - horizontalpodautoscalers
+    - ingresses
 
 # see https://backstage.io/docs/permissions/getting-started for more on the permission framework
 permission:
