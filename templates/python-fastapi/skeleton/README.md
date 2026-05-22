@@ -21,10 +21,13 @@ curl http://localhost:${{ values.service_port }}/health
 
 On every push to `${{ values.git_branch }}`, GitHub Actions:
 
-1. Runs tests.
-2. Builds `${{ values.image_repository }}:${GITHUB_SHA}`.
-3. Pushes the immutable image tag to the configured registry.
+1. Runs lint checks.
+2. Builds and pushes `${{ values.image_repository }}:<git-sha>` (immutable tag only).
+3. Updates `apps/${{ values.service_name }}/overlays/dev/kustomization.yaml` in the centralized GitOps repository with that SHA.
+4. Argo CD syncs the new image tag from Git and deploys to Kubernetes.
 
-**Argo CD Image Updater** automatically detects the new image in GHCR and updates the deployment in the centralized GitOps repository.
+Kubernetes manifests live only in the centralized GitOps repository (`sajjadkhan-academy/argocd-centralized-repo-idp`).
 
-Kubernetes manifests live only in the centralized GitOps repository.
+### Required secret
+
+This workflow uses the organization secret `GITOPS_REPO_TOKEN` (must have write access to the centralized GitOps repository). Ensure it is available to service repositories in your GitHub organization.

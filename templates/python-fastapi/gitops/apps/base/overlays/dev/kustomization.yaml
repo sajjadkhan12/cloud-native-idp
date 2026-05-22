@@ -6,7 +6,7 @@ resources:
 
 images:
   - name: ${{ values.image_repository }}
-    newTag: latest
+    newTag: bootstrap
 
 namespace: apps
 
