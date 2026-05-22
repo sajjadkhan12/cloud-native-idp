@@ -5,6 +5,15 @@ metadata:
   name: example-nodejs-template
   title: Example Node.js Template
   description: An example template for the scaffolder that creates a simple Node.js service
+  annotations:
+    foundry.io/template-guide: |
+      # Example Node.js Template
+
+      Scaffolds a simple Node.js service with a single endpoint.
+
+      ## After creation
+
+      The service will be available at `http://localhost:3000`.
 spec:
   owner: user:guest
   type: service

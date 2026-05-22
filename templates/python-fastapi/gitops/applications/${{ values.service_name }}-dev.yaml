@@ -6,11 +6,6 @@ metadata:
   finalizers:
     - resources-finalizer.argocd.argoproj.io
   annotations:
-    argocd-image-updater.argoproj.io/image-list: service=${{ values.image_repository }}
-    argocd-image-updater.argoproj.io/service.platforms: linux/amd64
-    argocd-image-updater.argoproj.io/service.update-strategy: latest
-    argocd-image-updater.argoproj.io/write-back-method: git
-    argocd-image-updater.argoproj.io/git-branch: main
     app: ${{ values.service_name }}
     environment: dev
 spec:
