@@ -4,6 +4,28 @@ metadata:
   name: python-fastapi
   title: Python FastAPI Microservice
   description: Scaffolds a FastAPI service with GitHub Actions and centralized ArgoCD GitOps registration.
+  annotations:
+    foundry.io/template-guide: |
+    
+      Scaffolds a production-ready FastAPI service and wires it into your platform GitOps flow.
+      ## What you get
+
+      - FastAPI app with health checks and Prometheus metrics
+      - GitHub repository with CI (lint, build, push to GHCR)
+      - Backstage catalog registration
+      - Argo CD Application + Kustomize manifests in the central GitOps repo
+      - TechDocs scaffold
+
+      ## Prerequisites
+
+      - GitHub organization access for the target org
+      - Organization secret `GITOPS_REPO_TOKEN` visible to new service repos
+      - Central GitOps repo merged and Argo CD configured
+
+      ## After creation
+
+      1. Merge the GitOps PR in `argocd-centralized-repo-idp`
+      2. Push to `main` — CI builds `:<git-sha>`, updates the GitOps overlay, and Argo CD deploys
   tags:
     - python
     - fastapi
@@ -41,8 +63,6 @@ spec:
           description: The target environment for deploying this service.
           enum:
             - dev
-            - staging
-            - prod
           default: dev
         description:
           title: Description
@@ -52,10 +72,12 @@ spec:
           title: GitHub Organization
           type: string
           description: Organization where the microservice repository will be created.
+          default: sajjadkhan-academy
         image_registry:
           title: Image Registry
           type: string
-          description: Registry namespace used for images, for example ghcr.io/my-org.
+          description: Registry namespace used for images, for example ghcr.io/my-org.]
+          default: ghcr.io/sajjadkhan-academy
         git_branch:
           title: Default Branch
           type: string
@@ -143,9 +165,11 @@ spec:
         update: true
         title: "chore(gitops): add ${{ parameters.service_name }} dev application"
         description: |
-          Adds the Kustomize base, dev overlay, and ArgoCD Application for `${{ parameters.service_name }}`.
+          Adds the Kustomize base, dev overlay, and Argo CD Application for `${{ parameters.service_name }}`.
 
-          The service CI will update only `apps/${{ parameters.service_name }}/overlays/dev/kustomization.yaml`.
+          After merge, ensure the organization secret `GITOPS_REPO_TOKEN` is available to the new
+          microservice repository so CI can update
+          `apps/${{ parameters.service_name }}/overlays/dev/kustomization.yaml` with the commit SHA on each push.
 
   output:
     links:
