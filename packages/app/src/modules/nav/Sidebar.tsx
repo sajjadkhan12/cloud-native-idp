@@ -11,6 +11,7 @@ import { SidebarLogo } from './SidebarLogo';
 import { FoundrySidebarTheme } from './FoundrySidebarTheme';
 import HomeIcon from '@material-ui/icons/Home';
 import CategoryIcon from '@material-ui/icons/Category';
+import EmojiEventsIcon from '@material-ui/icons/EmojiEvents';
 import SearchIcon from '@material-ui/icons/Search';
 import { SidebarSearchModal } from '@backstage/plugin-search';
 import { NotificationsSidebarItem } from '@backstage/plugin-notifications';
@@ -23,6 +24,7 @@ export const SidebarContent = NavContentBlueprint.make({
       ));
 
       nav.take('page:search');
+      nav.take('page:home');
       nav.take('page:app/home');
       nav.take('page:user-settings');
 
@@ -39,6 +41,9 @@ export const SidebarContent = NavContentBlueprint.make({
               <SidebarItem icon={CategoryIcon} to="/catalog" text="Catalog" />
             )}
             {nav.take('page:scaffolder')}
+            {nav.take('page:scorecards/scorecards') ?? (
+              <SidebarItem icon={EmojiEventsIcon} to="/scorecards" text="Scorecards" />
+            )}
             <SidebarDivider />
             <SidebarScrollWrapper>
               {nav.rest({ sortBy: 'title' })}

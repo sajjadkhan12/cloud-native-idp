@@ -11,6 +11,7 @@ import { catalogModule } from './modules/catalog';
 import { scaffolderModule } from './modules/scaffolder';
 import { layoutModule } from './modules/layout';
 import { entityModule } from './modules/entity';
+import { scorecardsPlugin } from './modules/scorecards';
 import scaffolderPlugin from '@backstage/plugin-scaffolder/alpha';
 
 import { githubAuthApiRef } from '@backstage/core-plugin-api';
@@ -53,6 +54,7 @@ export default createApp({
     layoutModule,
     entityModule,
     deprovisionModule,
+    scorecardsPlugin,
     createFrontendModule({
       pluginId: 'app',
       extensions: [signInPage],

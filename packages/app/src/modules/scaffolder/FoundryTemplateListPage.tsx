@@ -1,20 +1,12 @@
 import { useCallback } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import AddCircleOutlineIcon from '@material-ui/icons/AddCircleOutline';
-import { Box, Button, Card, CardContent, Typography } from '@material-ui/core';
-import { ContentHeader, DocsIcon, SupportButton } from '@backstage/core-components';
+import { Box, Button, Typography } from '@material-ui/core';
+import { DocsIcon, SupportButton } from '@backstage/core-components';
 import { useApp, useRouteRef } from '@backstage/core-plugin-api';
 import { useTranslationRef } from '@backstage/core-plugin-api/alpha';
-import {
-  CatalogFilterLayout,
-  EntityKindPicker,
-  EntityListProvider,
-  EntityOwnerPicker,
-  EntitySearchBar,
-  EntityTagPicker,
-  UserListPicker,
-} from '@backstage/plugin-catalog-react';
-import { TemplateCategoryPicker, TemplateGroups } from '@backstage/plugin-scaffolder-react/alpha';
+import { EntityListProvider } from '@backstage/plugin-catalog-react';
+import { TemplateGroups } from '@backstage/plugin-scaffolder-react/alpha';
 import { TemplateEntityV1beta3 } from '@backstage/plugin-scaffolder-common';
 import { parseEntityRef, stringifyEntityRef } from '@backstage/catalog-model';
 import { buildTechDocsURL } from '@backstage/plugin-techdocs-react';
@@ -27,6 +19,7 @@ import { usePermission } from '@backstage/plugin-permission-react';
 import scaffolderPlugin from '@backstage/plugin-scaffolder/alpha';
 import { scaffolderTranslationRef } from '@backstage/plugin-scaffolder/alpha';
 import { FoundryTemplateCard } from './FoundryTemplateCard';
+import { FoundryTemplateFilters } from './FoundryTemplateFilters';
 import { useScaffolderStyles } from './scaffolderStyles';
 
 export const FoundryTemplateListPage = () => {
@@ -104,16 +97,14 @@ export const FoundryTemplateListPage = () => {
             </Typography>
           </Box>
         </Box>
-      </Box>
-
-      <EntityListProvider>
-        <ContentHeader>
+        <Box className={classes.listHeaderActions}>
           {registerUrl && canRegister && (
             <Button
               component={RouterLink}
               variant="outlined"
               color="primary"
               to={registerUrl}
+              className={classes.headerActionButton}
             >
               {t('templateListPage.contentHeader.registerExistingButtonTitle')}
             </Button>
@@ -121,34 +112,19 @@ export const FoundryTemplateListPage = () => {
           <SupportButton>
             {t('templateListPage.contentHeader.supportButtonTitle')}
           </SupportButton>
-        </ContentHeader>
+        </Box>
+      </Box>
 
-        <CatalogFilterLayout>
-          <CatalogFilterLayout.Filters>
-            <Card className={`${classes.filterCard} filterCard`} elevation={0}>
-              <CardContent>
-                <Typography className={classes.filterTitle}>Filters</Typography>
-                <EntitySearchBar />
-                <EntityKindPicker initialFilter="template" hidden />
-                <UserListPicker
-                  initialFilter="all"
-                  availableFilters={['all', 'starred']}
-                />
-                <TemplateCategoryPicker />
-                <EntityTagPicker />
-                <EntityOwnerPicker />
-              </CardContent>
-            </Card>
-          </CatalogFilterLayout.Filters>
-          <CatalogFilterLayout.Content>
-            <TemplateGroups
-              groups={groups}
-              onTemplateSelected={onTemplateSelected}
-              additionalLinksForEntity={additionalLinksForEntity}
-              TemplateCardComponent={FoundryTemplateCard}
-            />
-          </CatalogFilterLayout.Content>
-        </CatalogFilterLayout>
+      <EntityListProvider>
+        <FoundryTemplateFilters />
+        <Box className={classes.templatesContent}>
+          <TemplateGroups
+            groups={groups}
+            onTemplateSelected={onTemplateSelected}
+            additionalLinksForEntity={additionalLinksForEntity}
+            TemplateCardComponent={FoundryTemplateCard}
+          />
+        </Box>
       </EntityListProvider>
     </Box>
   );
