@@ -1,0 +1,40 @@
+{
+  "name": "@foundry/cli",
+  "version": "0.1.0",
+  "description": "Foundry IDP CLI — scaffold services via the Backstage Scaffolder API",
+  "private": true,
+  "bin": {
+    "foundry": "./bin/foundry.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "start": "tsx src/index.ts",
+    "clean": "rm -rf dist",
+    "lint": "eslint src --ext .ts",
+    "test": "node --experimental-vm-modules ../../node_modules/jest/bin/jest.js --passWithNoTests"
+  },
+  "dependencies": {
+    "@backstage/catalog-client": "^1.15.0",
+    "@backstage/catalog-model": "^1.8.0",
+    "@backstage/integration": "^2.0.1",
+    "@backstage/plugin-scaffolder-common": "^2.1.0",
+    "@backstage/types": "^1.2.2",
+    "commander": "^12.1.0",
+    "ora": "^8.1.1",
+    "yaml": "^2.7.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/node": "^20.17.0",
+    "jest": "^30.2.0",
+    "ts-jest": "^29.2.5",
+    "tsx": "^4.19.0",
+    "typescript": "~5.8.0"
+  },
+  "files": [
+    "dist",
+    "bin"
+  ]
+}

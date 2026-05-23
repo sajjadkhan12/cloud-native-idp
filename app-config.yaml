@@ -85,6 +85,9 @@ techdocs:
 
 auth:
   environment: development
+  # Required for CLI browser login (OAuth consent + sessions). Override in production.
+  session:
+    secret: ${AUTH_SESSION_SECRET:-foundry-idp-local-dev-session-secret-min-32-chars}
   # see https://backstage.io/docs/auth/ to learn about auth providers
   providers:
     # See https://backstage.io/docs/auth/guest/provider
@@ -104,16 +107,15 @@ auth:
 
   # see https://backstage.io/docs/ai/mcp-actions#client-id-metadata-documents
   # to learn more about client id metadata documents
+  # CLI browser login (foundry auth login) — OIDC + PKCE like gcloud
+  backstageTokenExpiration: { hours: 8 }
+  experimentalRefreshToken:
+    enabled: true
   experimentalClientIdMetadataDocuments:
-    enabled: false
-    # Optional: restrict which `client_id` URLs are allowed (defaults to ['*'])
-    # allowedClientIdPatterns:
-    #   - 'https://example.com/*'
-    #   - 'https://*.trusted-domain.com/*'
-    # Optional: restrict which redirect URIs are allowed (defaults to ['*'])
-    # allowedRedirectUriPatterns:
-    #   - 'http://localhost:*'
-    #   - 'https://*.example.com/*'
+    enabled: true
+    allowedRedirectUriPatterns:
+      - 'http://127.0.0.1:*'
+      - 'http://localhost:*'
 
 scaffolder:
   # see https://backstage.io/docs/features/software-templates/configuration for software template options

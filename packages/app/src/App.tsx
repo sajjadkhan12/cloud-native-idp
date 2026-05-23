@@ -12,6 +12,7 @@ import { scaffolderModule } from './modules/scaffolder';
 import { layoutModule } from './modules/layout';
 import { entityModule } from './modules/entity';
 import scaffolderPlugin from '@backstage/plugin-scaffolder/alpha';
+import authPlugin from '@backstage/plugin-auth';
 
 import { githubAuthApiRef } from '@backstage/core-plugin-api';
 import { SignInPageBlueprint } from '@backstage/plugin-app-react';
@@ -40,6 +41,7 @@ const signInPage = SignInPageBlueprint.make({
 
 export default createApp({
   features: [
+    authPlugin,
     catalogPlugin,
     catalogModule,
     scaffolderPlugin,
