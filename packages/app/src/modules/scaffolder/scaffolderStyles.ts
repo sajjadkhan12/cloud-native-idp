@@ -14,8 +14,155 @@ export const useScaffolderStyles = makeStyles(theme => ({
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     gap: theme.spacing(2),
-    marginBottom: theme.spacing(3),
+    marginBottom: theme.spacing(2),
     flexWrap: 'wrap',
+  },
+  listHeaderActions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing(1),
+    flexWrap: 'wrap',
+    marginTop: theme.spacing(0.5),
+  },
+  headerActionButton: {
+    borderRadius: 10,
+    textTransform: 'none',
+    fontWeight: 600,
+    borderColor: 'rgba(13, 115, 119, 0.35)',
+    color: '#0d7377',
+  },
+  filterToolbar: {
+    display: 'grid',
+    gap: theme.spacing(1.5),
+    padding: theme.spacing(2),
+    marginBottom: theme.spacing(3),
+    borderRadius: 16,
+    border: '1px solid rgba(0,0,0,0.06)',
+    boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+    background: '#fff',
+    [theme.breakpoints.down('sm')]: {
+      padding: theme.spacing(1.5),
+    },
+  },
+  filterRowPrimary: {
+    display: 'grid',
+    gridTemplateColumns: 'minmax(0, 1fr) auto',
+    gap: theme.spacing(1.5),
+    alignItems: 'center',
+    [theme.breakpoints.down('xs')]: {
+      gridTemplateColumns: '1fr',
+    },
+  },
+  filterRowSecondary: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+    gap: theme.spacing(1.5),
+    alignItems: 'end',
+    [theme.breakpoints.down('md')]: {
+      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    },
+    [theme.breakpoints.down('xs')]: {
+      gridTemplateColumns: '1fr',
+    },
+  },
+  filterSearchWrap: {
+    minWidth: 0,
+  },
+  filterSelectWrap: {
+    minWidth: 0,
+  },
+  scopeToggle: {
+    display: 'inline-flex',
+    height: 40,
+    background: '#f4f6f8',
+    borderRadius: 10,
+    border: '1px solid rgba(0,0,0,0.08)',
+    flexShrink: 0,
+    overflow: 'hidden',
+    [theme.breakpoints.down('xs')]: {
+      width: '100%',
+    },
+    '& .MuiButton-root': {
+      border: 'none',
+      borderRadius: 0,
+      textTransform: 'none',
+      fontWeight: 600,
+      fontSize: '0.85rem',
+      color: theme.palette.text.secondary,
+      padding: theme.spacing(0.75, 1.5),
+      lineHeight: 1.2,
+      minHeight: 38,
+      minWidth: 72,
+      background: 'transparent',
+      '&:not(:last-child)': {
+        borderRight: '1px solid rgba(0,0,0,0.08)',
+      },
+      '&:hover': {
+        background: 'rgba(13, 115, 119, 0.08)',
+      },
+      '&.Mui-disabled': {
+        opacity: 0.45,
+      },
+      [theme.breakpoints.down('xs')]: {
+        flex: 1,
+      },
+    },
+  },
+  scopeToggleActive: {
+    background: 'linear-gradient(135deg, #0d7377 0%, #14a085 100%) !important',
+    color: '#fff !important',
+    boxShadow: 'inset 0 -2px 0 rgba(0,0,0,0.08)',
+    '&:hover': {
+      background: 'linear-gradient(135deg, #0a5c5f 0%, #0d7377 100%) !important',
+    },
+  },
+  templatesContent: {
+    width: '100%',
+  },
+  filterToolbarShell: {
+    '& .MuiFormControl-root': {
+      width: '100%',
+      margin: 0,
+    },
+    '& .MuiInputLabel-root, & .ScaffolderReactTemplateCategoryPicker-label, & .CatalogReactEntityTagPicker-root > label, & .CatalogReactEntityOwnerPicker-label': {
+      display: 'none !important',
+    },
+    '& .ScaffolderReactTemplateCategoryPicker-root, & .CatalogReactEntityTagPicker-root, & .CatalogReactEntityOwnerPicker-root': {
+      padding: '0 !important',
+      margin: 0,
+    },
+    '& .MuiInputBase-root, & .MuiOutlinedInput-root': {
+      borderRadius: 10,
+      background: '#fafbfc',
+      border: '1px solid rgba(0,0,0,0.08)',
+      minHeight: 40,
+      fontSize: '0.875rem',
+      transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+      '&:hover': {
+        borderColor: 'rgba(13, 115, 119, 0.35)',
+      },
+      '&.Mui-focused': {
+        borderColor: '#7df3e1',
+        boxShadow: '0 0 0 3px rgba(125, 243, 225, 0.2)',
+        background: '#fff',
+      },
+    },
+    '& .MuiInput-underline:before, & .MuiInput-underline:after, & .MuiOutlinedInput-notchedOutline': {
+      display: 'none',
+    },
+    '& .MuiAutocomplete-inputRoot': {
+      paddingTop: '6px !important',
+      paddingBottom: '6px !important',
+    },
+    '& .CatalogReactEntitySearchBar-root': {
+      margin: 0,
+    },
+    '& .CatalogReactEntitySearchBar-root .MuiInputBase-root': {
+      padding: theme.spacing(0.75, 1.25),
+    },
+    '& .MuiAutocomplete-endAdornment .MuiIconButton-root': {
+      padding: 6,
+    },
   },
   listHeaderLeft: {
     display: 'flex',

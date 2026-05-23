@@ -13,7 +13,10 @@ app:
     - nav-item:scaffolder: false
     - nav-item:kubernetes: false
     - page:kubernetes: false
+    - nav-item:home: false
+    - page:home: false
     - entity-card:catalog-graph/relations: true
+    - entity-card:scorecards/entity-scorecard: true
     - entity-context-menu-item:catalog/deprovision-context-menu-item: true
 
 organization:
@@ -136,7 +139,6 @@ catalog:
       target: ../../templates/python-fastapi/template.yaml
       rules:
         - allow: [Template]
-
     # Local example template
     - type: file
       target: ../../examples/template/template.yaml
