@@ -13,12 +13,16 @@ const deprovisionContextMenuItemExtension = EntityContextMenuItemBlueprint.make(
       };
     },
     icon: <DeleteIcon />,
-    filter: (entity) => {
-      return (
+    filter: entity => {
+      const isService =
         entity.kind === 'Component' &&
         entity.spec?.type === 'service' &&
-        !!entity.metadata.annotations?.['github.com/project-slug']
-      );
+        !!entity.metadata.annotations?.['github.com/project-slug'];
+
+      const isS3Bucket =
+        entity.kind === 'Resource' && entity.spec?.type === 's3-bucket';
+
+      return isService || isS3Bucket;
     },
   },
 });

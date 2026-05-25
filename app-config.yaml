@@ -139,11 +139,20 @@ catalog:
       target: ../../templates/python-fastapi/template.yaml
       rules:
         - allow: [Template]
+    - type: file
+      target: ../../templates/s3-bucket/template.yaml
+      rules:
+        - allow: [Template]
     # Local example template
     - type: file
       target: ../../examples/template/template.yaml
       rules:
         - allow: [Template]
+
+    - type: url
+      target: https://github.com/sajjadkhan-academy/backstage-terraform/blob/main/teams/team-alpha/catalog-info*.yaml
+      rules:
+        - allow: [Resource]
 
     ## Uncomment these lines to add more example data
     # - type: url

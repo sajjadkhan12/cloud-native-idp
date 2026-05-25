@@ -1,0 +1,23 @@
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: ${{ values.bucket_name }}
+  description: AWS S3 bucket provisioned via Backstage
+  annotations:
+    backstage.io/managed-by-location: "url:https://github.com/sajjadkhan-academy/backstage-terraform/blob/main/teams/${{ values.team_id }}/catalog-info-${{ values.bucket_name }}.yaml"
+    foundry.io/terraform-team: "${{ values.team_id }}"
+    foundry.io/terraform-repo: "sajjadkhan-academy/backstage-terraform"
+  tags:
+    - aws
+    - s3
+    - storage
+    - infrastructure
+  links:
+    - url: https://s3.console.aws.amazon.com/s3/buckets/${{ values.bucket_name }}?region=${{ values.aws_region }}
+      title: AWS S3 Console
+      icon: cloud
+spec:
+  type: s3-bucket
+  owner: ${{ values.owner }}
+  system: ${{ values.team_id }}-infrastructure
+  dependsOn: []

@@ -10,6 +10,21 @@ import {
 } from '@backstage/plugin-catalog-node';
 import express, { Router } from 'express';
 
+const TERRAFORM_REPO_OWNER = 'sajjadkhan-academy';
+const TERRAFORM_REPO = 'backstage-terraform';
+const GITOPS_REPO_OWNER = 'sajjadkhan-academy';
+const GITOPS_REPO = 'argocd-centralized-repo-idp';
+
+type GitHubHeaders = Record<string, string>;
+
+function githubHeaders(token: string): GitHubHeaders {
+  return {
+    Authorization: `Bearer ${token}`,
+    Accept: 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+  };
+}
+
 async function removeFromCatalog(
   catalog: CatalogService,
   credentials: BackstageCredentials,
@@ -17,22 +32,19 @@ async function removeFromCatalog(
   options: {
     entityRef: string;
     entityUid?: string;
-    githubOrg: string;
-    serviceName: string;
+    locationPrefix?: string;
   },
 ): Promise<void> {
-  const { entityRef, entityUid, githubOrg, serviceName } = options;
+  const { entityRef, entityUid, locationPrefix } = options;
 
   let location = await catalog.getLocationByEntity(entityRef, { credentials });
 
-  if (!location?.id) {
+  if (!location?.id && locationPrefix) {
     const { items: locations } = await catalog.queryLocations(
       {
         query: {
           type: 'url',
-          target: {
-            $hasPrefix: `https://github.com/${githubOrg}/${serviceName}/`,
-          },
+          target: { $hasPrefix: locationPrefix },
         },
       },
       { credentials },
@@ -53,6 +65,341 @@ async function removeFromCatalog(
   }
 }
 
+async function getMainCommitSha(
+  owner: string,
+  repo: string,
+  token: string,
+): Promise<string> {
+  const mainRefRes = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/git/ref/heads/main`,
+    { headers: githubHeaders(token) },
+  );
+
+  if (!mainRefRes.ok) {
+    throw new Error(`Failed to fetch main ref: ${await mainRefRes.text()}`);
+  }
+
+  const mainRefJson = await mainRefRes.json();
+  return mainRefJson.object.sha;
+}
+
+async function ensureBranch(
+  owner: string,
+  repo: string,
+  branchName: string,
+  mainCommitSha: string,
+  token: string,
+  logger: LoggerService,
+): Promise<void> {
+  const createBranchRes = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/git/refs`,
+    {
+      method: 'POST',
+      headers: {
+        ...githubHeaders(token),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        ref: `refs/heads/${branchName}`,
+        sha: mainCommitSha,
+      }),
+    },
+  );
+
+  if (!createBranchRes.ok && createBranchRes.status !== 422) {
+    throw new Error(
+      `Failed to create branch ${branchName}: ${await createBranchRes.text()}`,
+    );
+  }
+
+  logger.info(`Branch ${branchName} ready`);
+}
+
+async function createDeletionPullRequest(
+  owner: string,
+  repo: string,
+  branchName: string,
+  pathsToDelete: string[],
+  commitMessage: string,
+  prTitle: string,
+  prBody: string,
+  token: string,
+  logger: LoggerService,
+): Promise<string> {
+  if (pathsToDelete.length === 0) {
+    return '';
+  }
+
+  const mainCommitSha = await getMainCommitSha(owner, repo, token);
+  await ensureBranch(owner, repo, branchName, mainCommitSha, token, logger);
+
+  logger.info(`Files to delete in PR: ${pathsToDelete.join(', ')}`);
+
+  const newTreeItems = pathsToDelete.map(path => ({
+    path,
+    mode: '100644',
+    type: 'blob',
+    sha: null,
+  }));
+
+  const postTreeRes = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/git/trees`,
+    {
+      method: 'POST',
+      headers: {
+        ...githubHeaders(token),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        base_tree: mainCommitSha,
+        tree: newTreeItems,
+      }),
+    },
+  );
+
+  if (!postTreeRes.ok) {
+    throw new Error(`Failed to create tree: ${await postTreeRes.text()}`);
+  }
+
+  const { sha: newTreeSha } = await postTreeRes.json();
+
+  const postCommitRes = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/git/commits`,
+    {
+      method: 'POST',
+      headers: {
+        ...githubHeaders(token),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message: commitMessage,
+        tree: newTreeSha,
+        parents: [mainCommitSha],
+      }),
+    },
+  );
+
+  if (!postCommitRes.ok) {
+    throw new Error(`Failed to create commit: ${await postCommitRes.text()}`);
+  }
+
+  const { sha: newCommitSha } = await postCommitRes.json();
+
+  const updateRefRes = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/git/refs/heads/${branchName}`,
+    {
+      method: 'PATCH',
+      headers: {
+        ...githubHeaders(token),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        sha: newCommitSha,
+        force: true,
+      }),
+    },
+  );
+
+  if (!updateRefRes.ok) {
+    throw new Error(
+      `Failed to update branch reference: ${await updateRefRes.text()}`,
+    );
+  }
+
+  const prRes = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/pulls`,
+    {
+      method: 'POST',
+      headers: {
+        ...githubHeaders(token),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        title: prTitle,
+        head: branchName,
+        base: 'main',
+        body: prBody,
+      }),
+    },
+  );
+
+  if (!prRes.ok) {
+    logger.warn(`PR creation returned code ${prRes.status}: ${await prRes.text()}`);
+    return '';
+  }
+
+  const prJson = await prRes.json();
+  logger.info(`Successfully created PR: ${prJson.html_url}`);
+  return prJson.html_url;
+}
+
+async function deprovisionService(
+  options: {
+    serviceName: string;
+    githubOrg: string;
+    environment: string;
+    entityRef: string;
+    entityUid?: string;
+    githubToken: string;
+    catalog: CatalogService;
+    credentials: BackstageCredentials;
+    logger: LoggerService;
+  },
+): Promise<{ message: string; prUrl?: string }> {
+  const {
+    serviceName,
+    githubOrg,
+    environment,
+    entityRef,
+    entityUid,
+    githubToken,
+    catalog,
+    credentials,
+    logger,
+  } = options;
+
+  logger.info(`Removing ${entityRef} from Backstage catalog`);
+  await removeFromCatalog(catalog, credentials, logger, {
+    entityRef,
+    entityUid,
+    locationPrefix: `https://github.com/${githubOrg}/${serviceName}/`,
+  });
+
+  logger.info(`Deleting GitHub repository: ${githubOrg}/${serviceName}`);
+  const deleteRepoRes = await fetch(
+    `https://api.github.com/repos/${githubOrg}/${serviceName}`,
+    {
+      method: 'DELETE',
+      headers: githubHeaders(githubToken),
+    },
+  );
+
+  if (deleteRepoRes.status !== 204 && deleteRepoRes.status !== 404) {
+    throw new Error(
+      `Failed to delete GitHub repository: ${await deleteRepoRes.text()}`,
+    );
+  }
+
+  const branchName = `delete-${serviceName}-${environment}`;
+  const treeRes = await fetch(
+    `https://api.github.com/repos/${GITOPS_REPO_OWNER}/${GITOPS_REPO}/git/trees/main?recursive=1`,
+    { headers: githubHeaders(githubToken) },
+  );
+
+  if (!treeRes.ok) {
+    throw new Error(`Failed to fetch main tree: ${await treeRes.text()}`);
+  }
+
+  const treeJson = await treeRes.json();
+  const targetPaths = treeJson.tree
+    .filter((item: { path: string; type: string }) => {
+      const itemPathLower = item.path.toLowerCase();
+      const expectedAppPath =
+        `applications/${serviceName}-${environment}.yaml`.toLowerCase();
+      const expectedAppsDirPrefix = `apps/${serviceName}/`.toLowerCase();
+
+      return (
+        item.type === 'blob' &&
+        (itemPathLower === expectedAppPath ||
+          itemPathLower.startsWith(expectedAppsDirPrefix))
+      );
+    })
+    .map((item: { path: string }) => item.path);
+
+  const prUrl = await createDeletionPullRequest(
+    GITOPS_REPO_OWNER,
+    GITOPS_REPO,
+    branchName,
+    targetPaths,
+    `chore(gitops): delete service ${serviceName} dev manifests`,
+    `chore(gitops): deprovision service ${serviceName}`,
+    `This Pull Request removes the ArgoCD applications and Kustomize manifests for \`${serviceName}\` to completely deprovision the microservice.`,
+    githubToken,
+    logger,
+  );
+
+  if (prUrl) {
+    return {
+      message: `Successfully removed ${serviceName} from the catalog, deleted GitHub repository ${githubOrg}/${serviceName}, and created deletion Pull Request.`,
+      prUrl,
+    };
+  }
+
+  if (targetPaths.length === 0) {
+    return {
+      message: `Successfully removed ${serviceName} from the catalog and deleted GitHub repository ${githubOrg}/${serviceName}. No GitOps manifests were found to delete.`,
+    };
+  }
+
+  return {
+    message: `Successfully removed ${serviceName} from the catalog and deleted GitHub repository ${githubOrg}/${serviceName}.`,
+  };
+}
+
+async function deprovisionS3Bucket(
+  options: {
+    bucketName: string;
+    teamId: string;
+    entityRef: string;
+    entityUid?: string;
+    githubToken: string;
+    catalog: CatalogService;
+    credentials: BackstageCredentials;
+    logger: LoggerService;
+  },
+): Promise<{ message: string; prUrl?: string }> {
+  const {
+    bucketName,
+    teamId,
+    entityRef,
+    entityUid,
+    githubToken,
+    catalog,
+    credentials,
+    logger,
+  } = options;
+
+  logger.info(`Removing S3 bucket entity ${entityRef} from Backstage catalog`);
+  await removeFromCatalog(catalog, credentials, logger, {
+    entityRef,
+    entityUid,
+    locationPrefix: `https://github.com/${TERRAFORM_REPO_OWNER}/${TERRAFORM_REPO}/blob/main/teams/${teamId}/catalog-info-${bucketName}.yaml`,
+  });
+
+  const pathsToDelete = [
+    `teams/${teamId}/bucket-${bucketName}.tf`,
+    `teams/${teamId}/catalog-info-${bucketName}.yaml`,
+  ];
+
+  const branchName = `decommission/s3-${bucketName}`;
+  const prUrl = await createDeletionPullRequest(
+    TERRAFORM_REPO_OWNER,
+    TERRAFORM_REPO,
+    branchName,
+    pathsToDelete,
+    `decommission: remove s3 bucket ${bucketName}`,
+    `decommission: remove s3 bucket ${bucketName}`,
+    [
+      `## S3 Bucket Decommission`,
+      '',
+      `Removes Terraform configuration for bucket \`${bucketName}\`.`,
+      '',
+      '**Before merging:** ensure the bucket is empty in the AWS console.',
+      '',
+      `Merging triggers HCP Terraform to destroy the bucket (workspace \`backstage-terraform-${teamId}\`).`,
+    ].join('\n'),
+    githubToken,
+    logger,
+  );
+
+  return {
+    message: prUrl
+      ? `Successfully removed ${bucketName} from the catalog and created a decommission Pull Request in ${TERRAFORM_REPO_OWNER}/${TERRAFORM_REPO}. Empty the bucket in AWS before merging the PR.`
+      : `Successfully removed ${bucketName} from the catalog. Terraform files were not found in ${TERRAFORM_REPO_OWNER}/${TERRAFORM_REPO}.`,
+    prUrl: prUrl || undefined,
+  };
+}
+
 export const deprovisionPlugin = createBackendPlugin({
   pluginId: 'deprovision',
   register(env) {
@@ -68,30 +415,33 @@ export const deprovisionPlugin = createBackendPlugin({
         const router = Router();
         router.use(express.json());
 
-        // Allow guest/unauthenticated calls during development
         http.addAuthPolicy({
           path: '/delete',
           allow: 'unauthenticated',
         });
 
         router.post('/delete', async (req, res) => {
-          const { serviceName, githubOrg, environment, entityRef, entityUid } =
-            req.body;
-
-          if (!serviceName || !githubOrg || !environment) {
-            return res.status(400).json({
-              error: 'Missing serviceName, githubOrg, or environment',
-            });
-          }
+          const {
+            resourceType = 'service',
+            serviceName,
+            githubOrg,
+            environment,
+            bucketName,
+            teamId,
+            entityRef,
+            entityUid,
+          } = req.body;
 
           if (!entityRef) {
             return res.status(400).json({ error: 'Missing entityRef' });
           }
 
-          const githubConfigs = config.getOptionalConfigArray('integrations.github');
+          const githubConfigs =
+            config.getOptionalConfigArray('integrations.github');
           const githubToken =
             githubConfigs?.[0]?.getOptionalString('token') ||
             process.env.GITHUB_TOKEN;
+
           if (!githubToken) {
             return res.status(500).json({
               error: 'GitHub token not configured in Backstage backend',
@@ -99,244 +449,61 @@ export const deprovisionPlugin = createBackendPlugin({
           }
 
           try {
-            logger.info(`Starting deprovisioning for ${serviceName} in ${environment}`);
-
             const credentials = await auth.getOwnServiceCredentials();
 
-            // 1. Remove from Backstage catalog (location + component) before external deletes
-            logger.info(`Removing ${entityRef} from Backstage catalog`);
-            await removeFromCatalog(catalog, credentials, logger, {
+            if (resourceType === 's3-bucket') {
+              if (!bucketName || !teamId) {
+                return res.status(400).json({
+                  error: 'Missing bucketName or teamId for S3 bucket deprovision',
+                });
+              }
+
+              logger.info(
+                `Starting S3 bucket deprovisioning for ${bucketName} (team ${teamId})`,
+              );
+
+              const result = await deprovisionS3Bucket({
+                bucketName,
+                teamId,
+                entityRef,
+                entityUid,
+                githubToken,
+                catalog,
+                credentials,
+                logger,
+              });
+
+              return res.status(200).json(result);
+            }
+
+            if (!serviceName || !githubOrg || !environment) {
+              return res.status(400).json({
+                error: 'Missing serviceName, githubOrg, or environment',
+              });
+            }
+
+            logger.info(
+              `Starting service deprovisioning for ${serviceName} in ${environment}`,
+            );
+
+            const result = await deprovisionService({
+              serviceName,
+              githubOrg,
+              environment,
               entityRef,
               entityUid,
-              githubOrg,
-              serviceName,
+              githubToken,
+              catalog,
+              credentials,
+              logger,
             });
 
-            // 2. Delete GitHub Repository
-            logger.info(`Deleting GitHub repository: ${githubOrg}/${serviceName}`);
-            const deleteRepoRes = await fetch(
-              `https://api.github.com/repos/${githubOrg}/${serviceName}`,
-              {
-                method: 'DELETE',
-                headers: {
-                  Authorization: `Bearer ${githubToken}`,
-                  Accept: 'application/vnd.github+json',
-                  'X-GitHub-Api-Version': '2022-11-28',
-                },
-              },
-            );
-
-            if (deleteRepoRes.status !== 204 && deleteRepoRes.status !== 404) {
-              const errText = await deleteRepoRes.text();
-              logger.error(`Failed to delete repo: ${errText}`);
-              return res.status(deleteRepoRes.status).json({
-                error: `Failed to delete GitHub repository: ${errText}`,
-              });
-            }
-
-            // 3. Open PR to delete manifest files in GitOps repository
-            const gitopsOwner = 'sajjadkhan-academy';
-            const gitopsRepo = 'argocd-centralized-repo-idp';
-            const branchName = `delete-${serviceName}-${environment}`;
-
-            logger.info(
-              `Fetching latest commit from main in ${gitopsOwner}/${gitopsRepo}`,
-            );
-            const mainRefRes = await fetch(
-              `https://api.github.com/repos/${gitopsOwner}/${gitopsRepo}/git/ref/heads/main`,
-              {
-                headers: {
-                  Authorization: `Bearer ${githubToken}`,
-                  Accept: 'application/vnd.github+json',
-                },
-              },
-            );
-
-            if (!mainRefRes.ok) {
-              const err = await mainRefRes.text();
-              throw new Error(`Failed to fetch main ref: ${err}`);
-            }
-            const mainRefJson = await mainRefRes.json();
-            const mainCommitSha = mainRefJson.object.sha;
-
-            logger.info(`Creating branch ${branchName}`);
-            const createBranchRes = await fetch(
-              `https://api.github.com/repos/${gitopsOwner}/${gitopsRepo}/git/refs`,
-              {
-                method: 'POST',
-                headers: {
-                  Authorization: `Bearer ${githubToken}`,
-                  Accept: 'application/vnd.github+json',
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  ref: `refs/heads/${branchName}`,
-                  sha: mainCommitSha,
-                }),
-              },
-            );
-
-            if (!createBranchRes.ok && createBranchRes.status !== 422) {
-              const err = await createBranchRes.text();
-              throw new Error(`Failed to create branch ${branchName}: ${err}`);
-            }
-
-            logger.info(`Fetching recursive tree from main branch`);
-            const treeRes = await fetch(
-              `https://api.github.com/repos/${gitopsOwner}/${gitopsRepo}/git/trees/main?recursive=1`,
-              {
-                headers: {
-                  Authorization: `Bearer ${githubToken}`,
-                  Accept: 'application/vnd.github+json',
-                },
-              },
-            );
-            if (!treeRes.ok) {
-              const err = await treeRes.text();
-              throw new Error(`Failed to fetch main tree: ${err}`);
-            }
-            const treeJson = await treeRes.json();
-
-            const targetPaths = treeJson.tree
-              .filter((item: any) => {
-                const itemPathLower = item.path.toLowerCase();
-                const expectedAppPath =
-                  `applications/${serviceName}-${environment}.yaml`.toLowerCase();
-                const expectedAppsDirPrefix =
-                  `apps/${serviceName}/`.toLowerCase();
-
-                return (
-                  item.type === 'blob' &&
-                  (itemPathLower === expectedAppPath ||
-                    itemPathLower.startsWith(expectedAppsDirPrefix))
-                );
-              })
-              .map((item: any) => item.path);
-
-            let prUrl = '';
-
-            if (targetPaths.length > 0) {
-              logger.info(`Files to delete in PR: ${targetPaths.join(', ')}`);
-
-              const newTreeItems = targetPaths.map((path: string) => ({
-                path,
-                mode: '100644',
-                type: 'blob',
-                sha: null,
-              }));
-
-              logger.info(`Creating new tree with deleted files`);
-              const postTreeRes = await fetch(
-                `https://api.github.com/repos/${gitopsOwner}/${gitopsRepo}/git/trees`,
-                {
-                  method: 'POST',
-                  headers: {
-                    Authorization: `Bearer ${githubToken}`,
-                    Accept: 'application/vnd.github+json',
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({
-                    base_tree: mainCommitSha,
-                    tree: newTreeItems,
-                  }),
-                },
-              );
-              if (!postTreeRes.ok) {
-                const err = await postTreeRes.text();
-                throw new Error(`Failed to create tree: ${err}`);
-              }
-              const postTreeJson = await postTreeRes.json();
-              const newTreeSha = postTreeJson.sha;
-
-              logger.info(`Creating commit on branch ${branchName}`);
-              const postCommitRes = await fetch(
-                `https://api.github.com/repos/${gitopsOwner}/${gitopsRepo}/git/commits`,
-                {
-                  method: 'POST',
-                  headers: {
-                    Authorization: `Bearer ${githubToken}`,
-                    Accept: 'application/vnd.github+json',
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({
-                    message: `chore(gitops): delete service ${serviceName} dev manifests`,
-                    tree: newTreeSha,
-                    parents: [mainCommitSha],
-                  }),
-                },
-              );
-              if (!postCommitRes.ok) {
-                const err = await postCommitRes.text();
-                throw new Error(`Failed to create commit: ${err}`);
-              }
-              const postCommitJson = await postCommitRes.json();
-              const newCommitSha = postCommitJson.sha;
-
-              logger.info(`Updating branch ${branchName} reference to new commit`);
-              const updateRefRes = await fetch(
-                `https://api.github.com/repos/${gitopsOwner}/${gitopsRepo}/git/refs/heads/${branchName}`,
-                {
-                  method: 'PATCH',
-                  headers: {
-                    Authorization: `Bearer ${githubToken}`,
-                    Accept: 'application/vnd.github+json',
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({
-                    sha: newCommitSha,
-                    force: true,
-                  }),
-                },
-              );
-              if (!updateRefRes.ok) {
-                const err = await updateRefRes.text();
-                throw new Error(`Failed to update branch reference: ${err}`);
-              }
-
-              logger.info(`Creating Pull Request to merge ${branchName} into main`);
-              const prRes = await fetch(
-                `https://api.github.com/repos/${gitopsOwner}/${gitopsRepo}/pulls`,
-                {
-                  method: 'POST',
-                  headers: {
-                    Authorization: `Bearer ${githubToken}`,
-                    Accept: 'application/vnd.github+json',
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({
-                    title: `chore(gitops): deprovision service ${serviceName}`,
-                    head: branchName,
-                    base: 'main',
-                    body: `This Pull Request removes the ArgoCD applications and Kustomize manifests for \`${serviceName}\` to completely deprovision the microservice.`,
-                  }),
-                },
-              );
-
-              if (prRes.ok) {
-                const prJson = await prRes.json();
-                prUrl = prJson.html_url;
-                logger.info(`Successfully created PR: ${prUrl}`);
-              } else {
-                const err = await prRes.text();
-                logger.warn(`PR creation returned code ${prRes.status}: ${err}`);
-              }
-
-              return res.status(200).json({
-                message: `Successfully removed ${serviceName} from the catalog, deleted GitHub repository ${githubOrg}/${serviceName}, and created deletion Pull Request.`,
-                prUrl,
-              });
-            }
-
-            logger.info(
-              `No manifest files found to delete for ${serviceName} in GitOps repo.`,
-            );
-            return res.status(200).json({
-              message: `Successfully removed ${serviceName} from the catalog and deleted GitHub repository ${githubOrg}/${serviceName}. No GitOps manifests were found to delete.`,
-            });
-          } catch (err: any) {
-            logger.error(`Error during deprovisioning: ${err.message}`);
+            return res.status(200).json(result);
+          } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : String(err);
+            logger.error(`Error during deprovisioning: ${message}`);
             return res.status(500).json({
-              error: `Internal error during deprovisioning: ${err.message}`,
+              error: `Internal error during deprovisioning: ${message}`,
             });
           }
         });
