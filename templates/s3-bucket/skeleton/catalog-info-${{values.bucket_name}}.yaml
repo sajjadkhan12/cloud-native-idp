@@ -4,8 +4,7 @@ metadata:
   name: ${{ values.bucket_name }}
   description: AWS S3 bucket provisioned via Backstage
   annotations:
-    backstage.io/managed-by-location: "url:https://github.com/sajjadkhan-academy/backstage-terraform/blob/main/teams/${{ values.team_id }}/catalog-info-${{ values.bucket_name }}.yaml"
-    foundry.io/terraform-team: "${{ values.team_id }}"
+    backstage.io/managed-by-location: "url:https://github.com/sajjadkhan-academy/backstage-terraform/blob/main/catalog-info-${{ values.bucket_name }}.yaml"
     foundry.io/terraform-repo: "sajjadkhan-academy/backstage-terraform"
   tags:
     - aws
@@ -19,5 +18,5 @@ metadata:
 spec:
   type: s3-bucket
   owner: ${{ values.owner }}
-  system: ${{ values.team_id }}-infrastructure
+  system: platform-infrastructure
   dependsOn: []

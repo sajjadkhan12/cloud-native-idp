@@ -339,7 +339,6 @@ async function deprovisionService(
 async function deprovisionS3Bucket(
   options: {
     bucketName: string;
-    teamId: string;
     entityRef: string;
     entityUid?: string;
     githubToken: string;
@@ -350,7 +349,6 @@ async function deprovisionS3Bucket(
 ): Promise<{ message: string; prUrl?: string }> {
   const {
     bucketName,
-    teamId,
     entityRef,
     entityUid,
     githubToken,
@@ -363,12 +361,12 @@ async function deprovisionS3Bucket(
   await removeFromCatalog(catalog, credentials, logger, {
     entityRef,
     entityUid,
-    locationPrefix: `https://github.com/${TERRAFORM_REPO_OWNER}/${TERRAFORM_REPO}/blob/main/teams/${teamId}/catalog-info-${bucketName}.yaml`,
+    locationPrefix: `https://github.com/${TERRAFORM_REPO_OWNER}/${TERRAFORM_REPO}/blob/main/catalog-info-${bucketName}.yaml`,
   });
 
   const pathsToDelete = [
-    `teams/${teamId}/bucket-${bucketName}.tf`,
-    `teams/${teamId}/catalog-info-${bucketName}.yaml`,
+    `s3-${bucketName}.tf`,
+    `catalog-info-${bucketName}.yaml`,
   ];
 
   const branchName = `decommission/s3-${bucketName}`;
@@ -385,8 +383,6 @@ async function deprovisionS3Bucket(
       `Removes Terraform configuration for bucket \`${bucketName}\`.`,
       '',
       '**Before merging:** ensure the bucket is empty in the AWS console.',
-      '',
-      `Merging triggers HCP Terraform to destroy the bucket (workspace \`backstage-terraform-${teamId}\`).`,
     ].join('\n'),
     githubToken,
     logger,
@@ -452,19 +448,18 @@ export const deprovisionPlugin = createBackendPlugin({
             const credentials = await auth.getOwnServiceCredentials();
 
             if (resourceType === 's3-bucket') {
-              if (!bucketName || !teamId) {
+              if (!bucketName) {
                 return res.status(400).json({
-                  error: 'Missing bucketName or teamId for S3 bucket deprovision',
+                  error: 'Missing bucketName for S3 bucket deprovision',
                 });
               }
 
               logger.info(
-                `Starting S3 bucket deprovisioning for ${bucketName} (team ${teamId})`,
+                `Starting S3 bucket deprovisioning for ${bucketName}`,
               );
 
               const result = await deprovisionS3Bucket({
                 bucketName,
-                teamId,
                 entityRef,
                 entityUid,
                 githubToken,

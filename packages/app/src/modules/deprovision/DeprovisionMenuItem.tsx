@@ -57,20 +57,9 @@ export const DeprovisionMenuItem = () => {
       let body: Record<string, string | undefined>;
 
       if (isS3Bucket) {
-        const teamId =
-          entity.metadata.annotations?.['foundry.io/terraform-team'] ||
-          entity.spec?.system?.toString().replace(/-infrastructure$/, '');
-
-        if (!teamId) {
-          throw new Error(
-            'Could not resolve Terraform team from entity annotations (foundry.io/terraform-team)',
-          );
-        }
-
         body = {
           resourceType: 's3-bucket',
           bucketName: entity.metadata.name,
-          teamId,
           entityRef,
           entityUid,
         };

@@ -150,7 +150,7 @@ catalog:
         - allow: [Template]
 
     - type: url
-      target: https://github.com/sajjadkhan-academy/backstage-terraform/blob/main/teams/team-alpha/catalog-info*.yaml
+      target: https://github.com/sajjadkhan-academy/backstage-terraform/blob/main/catalog-info*.yaml
       rules:
         - allow: [Resource]
 
