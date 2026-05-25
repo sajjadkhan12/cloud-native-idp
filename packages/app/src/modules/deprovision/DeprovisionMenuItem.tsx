@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { useEntity, catalogApiRef } from '@backstage/plugin-catalog-react';
+import { useEntity } from '@backstage/plugin-catalog-react';
 import { configApiRef, useApi, alertApiRef } from '@backstage/core-plugin-api';
+import { stringifyEntityRef } from '@backstage/catalog-model';
 import {
   Button,
   Dialog,
@@ -17,7 +18,6 @@ export const DeprovisionMenuItem = () => {
   const [loading, setLoading] = useState(false);
   const configApi = useApi(configApiRef);
   const alertApi = useApi(alertApiRef);
-  const catalogApi = useApi(catalogApiRef) as any;
 
   const handleClose = (e?: any) => {
     if (e) e.stopPropagation();
@@ -48,6 +48,8 @@ export const DeprovisionMenuItem = () => {
           serviceName,
           githubOrg,
           environment,
+          entityRef: stringifyEntityRef(entity),
+          entityUid: entity.metadata.uid,
         }),
       });
 
@@ -59,15 +61,10 @@ export const DeprovisionMenuItem = () => {
       const resJson = await response.json();
       
       alertApi.post({
-        message: `Deprovisioning successful! Repository deleted. ${resJson.prUrl ? `PR opened: ${resJson.prUrl}` : ''}`,
+        message: `Deprovisioning successful! ${resJson.message}${resJson.prUrl ? ` PR: ${resJson.prUrl}` : ''}`,
         severity: 'success',
         display: 'transient',
       });
-
-      // Remove from Backstage Catalog
-      if (entity.metadata.uid) {
-        await catalogApi.removeEntityByUid(entity.metadata.uid);
-      }
 
       // Redirect to catalog
       window.location.href = '/catalog';
@@ -111,7 +108,7 @@ export const DeprovisionMenuItem = () => {
             Are you sure you want to completely deprovision <strong>{entity.metadata.name}</strong>?
             <br />
             <br />
-            This will permanently delete the GitHub repository <strong>{projectSlug || 'N/A'}</strong> and remove it from ArgoCD GitOps. 
+            This will remove the service from the Backstage catalog, permanently delete the GitHub repository <strong>{projectSlug || 'N/A'}</strong>, and remove it from ArgoCD GitOps.
             <strong> This action cannot be undone!</strong>
           </DialogContentText>
         </DialogContent>
