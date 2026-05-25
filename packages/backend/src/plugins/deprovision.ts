@@ -365,7 +365,9 @@ async function deprovisionS3Bucket(
   });
 
   const pathsToDelete = [
-    `s3-${bucketName}.tf`,
+    `stacks/${bucketName}/main.tf`,
+    `stacks/${bucketName}/versions.tf`,
+    `stacks/${bucketName}/variables.tf`,
     `catalog-info-${bucketName}.yaml`,
   ];
 
